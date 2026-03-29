@@ -1,3 +1,4 @@
+// Book model -- first draft, missing CoverUrl and Description
 namespace LibraryApp.Models;
 public class Book
 {
@@ -10,9 +11,6 @@ public class Book
     public string Shelf { get; set; } = "";
     public string Row { get; set; } = "";
     public bool IsAvailable { get; set; } = true;
-    public string? CoverUrl { get; set; }
-    public string? Description { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
     public string AvailabilityLabel => IsAvailable ? "Available" : "Borrowed";
     public string Location => $"{Shelf} / {Row}";
 }
