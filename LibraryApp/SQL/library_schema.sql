@@ -4,15 +4,17 @@
 -- Run this script once to create the database and tables:
 --   mysql -u root -p < library_schema.sql
 -- ============================================================
-
+ 
 CREATE DATABASE IF NOT EXISTS library_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE library_db;
-
+ 
 CREATE TABLE IF NOT EXISTS books (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     author VARCHAR(255) NOT NULL,
-    isbn VARCHAR(20) NULL,
+    -- ISBN stored as NULL when not provided so the UNIQUE constraint
+    -- does not collide for books that have no ISBN.
+    isbn VARCHAR(20) NULL DEFAULT NULL,
     publication_year SMALLINT NULL,
     genre VARCHAR(100) NULL,
     shelf VARCHAR(50) NULL,
@@ -26,9 +28,11 @@ CREATE TABLE IF NOT EXISTS books (
     INDEX idx_author(author),
     INDEX idx_isbn(isbn),
     INDEX idx_genre(genre),
+    -- UNIQUE on isbn: MySQL allows multiple NULL values in a UNIQUE column,
+    -- so books with no ISBN (stored as NULL) will not conflict.
     UNIQUE KEY uq_isbn(isbn)
 ) ENGINE=InnoDB;
-
+ 
 CREATE TABLE IF NOT EXISTS borrow_records (
     id INT AUTO_INCREMENT PRIMARY KEY,
     book_id INT NOT NULL,
@@ -39,7 +43,7 @@ CREATE TABLE IF NOT EXISTS borrow_records (
     return_date DATETIME NULL,
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
-
+ 
 -- Sample data
 INSERT IGNORE INTO books (title,author,isbn,publication_year,genre,shelf,`row_number`,is_available) VALUES
 ('The Pragmatic Programmer','David Thomas','9780135957059',1999,'Technology','A','1',1),

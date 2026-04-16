@@ -1,16 +1,16 @@
 using MySql.Data.MySqlClient;
 using LibraryApp.Models;
 namespace LibraryApp.Database;
-
+ 
 public class DatabaseHelper
 {
     private string _cs;
     public DatabaseHelper(string cs) { _cs = cs; }
     public void UpdateConnectionString(string cs) => _cs = cs;
     private MySqlConnection Conn() => new(_cs);
-
+ 
     public bool TestConnection() { try { using var c = Conn(); c.Open(); return true; } catch { return false; } }
-
+ 
     public List<Book> GetBooks(string? title = null, string? author = null, string? genre = null, string? isbn = null, bool? available = null)
     {
         var books = new List<Book>(); var w = new List<string>(); var p = new List<MySqlParameter>();
@@ -22,27 +22,27 @@ public class DatabaseHelper
         catch (Exception ex) { throw new Exception("GetBooks: " + ex.Message, ex); }
         return books;
     }
-
+ 
     public int AddBook(Book b)
     {
         const string sql = "INSERT INTO books (title,author,isbn,publication_year,genre,shelf,`row_number`,is_available,cover_url,description) VALUES (@t,@a,@i,@y,@g,@s,@r,@av,@cu,@d); SELECT LAST_INSERT_ID();";
         try { using var c = Conn(); c.Open(); using var cmd = new MySqlCommand(sql, c); Bind(cmd, b); return Convert.ToInt32(cmd.ExecuteScalar()); }
         catch (Exception ex) { throw new Exception("AddBook: " + ex.Message, ex); }
     }
-
+ 
     public bool UpdateBook(Book b)
     {
         const string sql = "UPDATE books SET title=@t,author=@a,isbn=@i,publication_year=@y,genre=@g,shelf=@s,`row_number`=@r,is_available=@av,cover_url=@cu,description=@d WHERE id=@id";
         try { using var c = Conn(); c.Open(); using var cmd = new MySqlCommand(sql, c); Bind(cmd, b); cmd.Parameters.AddWithValue("@id", b.Id); return cmd.ExecuteNonQuery() > 0; }
         catch (Exception ex) { throw new Exception("UpdateBook: " + ex.Message, ex); }
     }
-
+ 
     public bool DeleteBook(int id)
     {
         try { using var c = Conn(); c.Open(); using var cmd = new MySqlCommand("DELETE FROM books WHERE id=@id", c); cmd.Parameters.AddWithValue("@id", id); return cmd.ExecuteNonQuery() > 0; }
         catch (Exception ex) { throw new Exception("DeleteBook: " + ex.Message, ex); }
     }
-
+ 
     public List<BorrowRecord> GetBorrowRecords(bool activeOnly = false)
     {
         var list = new List<BorrowRecord>();
@@ -55,7 +55,7 @@ public class DatabaseHelper
         catch (Exception ex) { throw new Exception("GetBorrowRecords: " + ex.Message, ex); }
         return list;
     }
-
+ 
     public int BorrowBook(int bookId, string name, string email, DateTime due)
     {
         using var c = Conn(); c.Open(); using var tx = c.BeginTransaction();
@@ -69,19 +69,26 @@ public class DatabaseHelper
         }
         catch { tx.Rollback(); throw; }
     }
-
+ 
+    // FIX: was using raw string interpolation — now uses parameterised queries to prevent SQL injection
     public bool ReturnBook(int recordId, int bookId)
     {
         using var c = Conn(); c.Open(); using var tx = c.BeginTransaction();
         try
         {
-            new MySqlCommand($"UPDATE borrow_records SET return_date=NOW() WHERE id={recordId}", c, tx).ExecuteNonQuery();
-            new MySqlCommand($"UPDATE books SET is_available=1 WHERE id={bookId}", c, tx).ExecuteNonQuery();
+            var updRecord = new MySqlCommand("UPDATE borrow_records SET return_date=NOW() WHERE id=@rid", c, tx);
+            updRecord.Parameters.AddWithValue("@rid", recordId);
+            updRecord.ExecuteNonQuery();
+ 
+            var updBook = new MySqlCommand("UPDATE books SET is_available=1 WHERE id=@bid", c, tx);
+            updBook.Parameters.AddWithValue("@bid", bookId);
+            updBook.ExecuteNonQuery();
+ 
             tx.Commit(); return true;
         }
         catch { tx.Rollback(); throw; }
     }
-
+ 
     public Dictionary<string, int> GetStats()
     {
         var d = new Dictionary<string, int> { ["total"]=0, ["available"]=0, ["borrowed"]=0, ["overdue"]=0 };
@@ -94,7 +101,7 @@ public class DatabaseHelper
         } catch { }
         return d;
     }
-
+ 
     public List<(string Genre, int Count)> GetBooksByGenre()
     {
         var list = new List<(string, int)>();
@@ -102,15 +109,22 @@ public class DatabaseHelper
         catch { }
         return list;
     }
-
+ 
     public static string ToCsv(IEnumerable<Book> books)
     {
         var sb = new System.Text.StringBuilder(); sb.AppendLine("ID,Title,Author,ISBN,Year,Genre,Shelf,Row,Available");
-        static string E(string s) => s.Contains(',') || s.Contains('"') ? "\"" + s.Replace("\"", "\"\"") + "\"" : s;
-        foreach (var b in books) sb.AppendLine($"{b.Id},{E(b.Title)},{E(b.Author)},{b.ISBN},{b.PublicationYear},{E(b.Genre)},{b.Shelf},{b.Row},{b.IsAvailable}");
+        static string E(string? s)
+        {
+            s ??= string.Empty;
+            bool needsQuotes = s.Contains(',') || s.Contains('"') || s.Contains('\r') || s.Contains('\n');
+            return needsQuotes ? "\"" + s.Replace("\"", "\"\"") + "\"" : s;
+        }
+
+        foreach (var b in books)
+            sb.AppendLine($"{b.Id},{E(b.Title)},{E(b.Author)},{E(b.ISBN)},{b.PublicationYear},{E(b.Genre)},{E(b.Shelf)},{E(b.Row)},{b.IsAvailable}");
         return sb.ToString();
     }
-
+ 
     private static Book Map(MySqlDataReader r) => new()
     {
         Id = r.GetInt32("id"), Title = r.GetString("title"), Author = r.GetString("author"),
@@ -124,14 +138,21 @@ public class DatabaseHelper
         Description = r.IsDBNull(r.GetOrdinal("description")) ? null : r.GetString("description"),
         CreatedAt = r.GetDateTime("created_at")
     };
-
+ 
+    // FIX: empty string ISBN stored as NULL so the UNIQUE constraint doesn't
+    // collide when multiple books have no ISBN entered.
     private static void Bind(MySqlCommand cmd, Book b)
     {
-        cmd.Parameters.AddWithValue("@t", b.Title); cmd.Parameters.AddWithValue("@a", b.Author);
-        cmd.Parameters.AddWithValue("@i", b.ISBN); cmd.Parameters.AddWithValue("@y", b.PublicationYear);
-        cmd.Parameters.AddWithValue("@g", b.Genre); cmd.Parameters.AddWithValue("@s", b.Shelf);
-        cmd.Parameters.AddWithValue("@r", b.Row); cmd.Parameters.AddWithValue("@av", b.IsAvailable ? 1 : 0);
+        cmd.Parameters.AddWithValue("@t", b.Title);
+        cmd.Parameters.AddWithValue("@a", b.Author);
+        // Store empty ISBN as NULL — MySQL UNIQUE allows multiple NULLs
+        cmd.Parameters.AddWithValue("@i", string.IsNullOrWhiteSpace(b.ISBN) ? (object)DBNull.Value : b.ISBN.Trim());
+        cmd.Parameters.AddWithValue("@y", b.PublicationYear == 0 ? (object)DBNull.Value : b.PublicationYear);
+        cmd.Parameters.AddWithValue("@g", b.Genre);
+        cmd.Parameters.AddWithValue("@s", b.Shelf);
+        cmd.Parameters.AddWithValue("@r", b.Row);
+        cmd.Parameters.AddWithValue("@av", b.IsAvailable ? 1 : 0);
         cmd.Parameters.AddWithValue("@cu", (object?)b.CoverUrl ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@d", (object?)b.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@d",  (object?)b.Description ?? DBNull.Value);
     }
 }
