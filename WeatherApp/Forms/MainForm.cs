@@ -109,16 +109,23 @@ namespace WeatherApp.Forms
         private Panel?     _cardsPanel;
         private Panel?     _spinnerPanel;
         private Panel?     _detailPanel;
-        private BufferedPanel? _mapPanelSmall; // small map on search tab
+        private Panel?     _searchCard;
 
         // Globe panel
         private BufferedPanel? _mapPanel;
 
         // Favorites panel
         private ListBox?  _lstFavorites;
+        private Panel?    _favoritesCard;
+        private Panel?    _favoritesToolbar;
+        private Button?   _btnLoadFavorite;
+        private Button?   _btnRemoveFavorite;
 
         // Settings
         private CheckBox? _chkDarkMode;
+        private Panel?    _settingsCard;
+        private Label?    _settingsTitle;
+        private Label?    _settingsApiNote;
 
         // Status bar
         private ToolStripStatusLabel? _lblStatus;
@@ -145,8 +152,8 @@ namespace WeatherApp.Forms
         public MainForm()
         {
             Text            = "WeatherPro";
-            Size            = new Size(1180, 740);
-            MinimumSize     = new Size(1000, 640);
+            Size            = new Size(1360, 960);
+            MinimumSize     = new Size(1200, 860);
             StartPosition   = FormStartPosition.CenterScreen;
             Font            = new Font("Segoe UI", 10F);
             BackColor       = Bg;
@@ -234,7 +241,6 @@ namespace WeatherApp.Forms
                 }
                 _coastlines = lines; _detailedMapLoaded = true;
                 _mapPanel?.Invalidate();
-                _mapPanelSmall?.Invalidate();
             }
             catch { }
         }

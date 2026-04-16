@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Text;
 using System.Net.Http;
 using System.Windows.Forms;
@@ -65,44 +66,64 @@ namespace WeatherApp.Forms
 
             // Heading
             DateTime dt = DateTime.Parse(_selectedDay.Date);
-            using var titleFont = new Font("Segoe UI Semibold", 11F);
+            using var titleFont = new Font("Segoe UI Semibold", 15F);
             using var titleBr = new SolidBrush(TextMain);
             g.DrawString($"Details — {dt:dddd dd MMMM yyyy}", titleFont, titleBr, 16, 12);
             using var sepPen = new Pen(Border, 1);
-            g.DrawLine(sepPen, 16, 36, W - 16, 36);
+            g.DrawLine(sepPen, 16, 44, W - 16, 44);
 
-            // Chart
-            DrawTemperatureChart(g, 16, 44, Math.Min(420, W - 300), 148);
+            int chartX = 16;
+            int chartY = 56;
+            const int statsBlockWidth = 570;
+            int chartWidth = Math.Max(500, W - statsBlockWidth - 76);
+            int chartHeight = Math.Max(280, H - chartY - 64);
+            DrawTemperatureChart(g, chartX, chartY, chartWidth, chartHeight);
 
-            // Stats grid
-            int statsX = Math.Min(460, W - 380);
-            const int gapX = 115, gapY = 46;
+            // Right-side stats block in 3 columns with slightly roomier spacing.
+            int statsX = Math.Max(chartX + chartWidth + 14, W - statsBlockWidth - 20);
+            int statsY = 66;
+            const int cols = 3;
+            const int colWidth = 182;
+            const int rowHeight = 82;
 
-            DrawStatBox(g, statsX,          44,          "🌡", "Feels Like",  $"{_selectedDay.FeelsLike:F1}°C");
-            DrawStatBox(g, statsX,          44 + gapY,   "📊", "Pressure",    $"{_selectedDay.Pressure:F0} hPa");
-            DrawStatBox(g, statsX,          44 + 2*gapY, "👁", "Visibility",  $"{_selectedDay.Visibility:F1} km");
-            DrawStatBox(g, statsX + gapX,   44,          "🌅", "Sunrise",     _selectedDay.Sunrise);
-            DrawStatBox(g, statsX + gapX,   44 + gapY,   "🌇", "Sunset",      _selectedDay.Sunset);
-            DrawStatBox(g, statsX + gapX,   44 + 2*gapY, "☔", "Rain",        $"{_selectedDay.PrecipitationProbability}%");
-            DrawStatBox(g, statsX + 2*gapX, 44,          "💧", "Humidity",    $"{_selectedDay.Humidity}%");
-            DrawStatBox(g, statsX + 2*gapX, 44 + gapY,   "☁", "Clouds",      $"{_selectedDay.CloudCover}%");
-            DrawStatBox(g, statsX + 2*gapX, 44 + 2*gapY, "🌬", "Wind",       $"{_selectedDay.WindSpeed:F0} km/h");
+            var stats = new (string Icon, string Label, string Value)[]
+            {
+                ("🌡", "Feels Like", $"{_selectedDay.FeelsLike:F1}°C"),
+                ("🌅", "Sunrise", _selectedDay.Sunrise),
+                ("💧", "Humidity", $"{_selectedDay.Humidity}%"),
+                ("📊", "Pressure", $"{_selectedDay.Pressure:F0} hPa"),
+                ("🌇", "Sunset", _selectedDay.Sunset),
+                ("☁", "Clouds", $"{_selectedDay.CloudCover}%"),
+                ("👁", "Visibility", $"{_selectedDay.Visibility:F1} km"),
+                ("☔", "Rain", $"{_selectedDay.PrecipitationProbability}%"),
+                ("🌬", "Wind", $"{_selectedDay.WindSpeed:F0} km/h")
+            };
+
+            for (int i = 0; i < stats.Length; i++)
+            {
+                int col = i % cols;
+                int row = i / cols;
+                int x = statsX + col * colWidth;
+                int y = statsY + row * rowHeight;
+                DrawStatBox(g, x, y, stats[i].Icon, stats[i].Label, stats[i].Value);
+            }
 
             // Compass
-            DrawWindCompass(g, W - 76, H / 2 - 10, 70, _selectedDay.WindSpeed);
+            DrawWindCompass(g, W - 78, H - 82, 74, _selectedDay.WindSpeed);
         }
 
         private void DrawStatBox(Graphics g, int x, int y, string icon, string label, string value)
         {
-            using var iconFont  = new Font("Segoe UI", 10F);
-            using var lblFont   = new Font("Segoe UI", 7.5f);
-            using var valFont   = new Font("Segoe UI Semibold", 9.5f);
+            using var iconFont  = new Font("Segoe UI Emoji", 11F);
+            using var lblFont   = new Font("Segoe UI", 9.5f);
+            using var valFont   = new Font("Segoe UI Semibold", 11.5f);
             using var accentBr  = new SolidBrush(Accent);
             using var mutedBr   = new SolidBrush(TextMuted);
             using var mainBr    = new SolidBrush(TextMain);
-            g.DrawString(icon,  iconFont, accentBr, x,      y);
-            g.DrawString(label, lblFont,  mutedBr,  x + 22, y + 2);
-            g.DrawString(value, valFont,  mainBr,   x + 22, y + 17);
+            const int iconColumnWidth = 39;
+            g.DrawString(icon,  iconFont, accentBr, x,                        y);
+            g.DrawString(label, lblFont,  mutedBr,  x + iconColumnWidth,      y + 2);
+            g.DrawString(value, valFont,  mainBr,   x + iconColumnWidth + 1,  y + 28);
         }
 
         private void DrawWindCompass(Graphics g, int cx, int cy, int size, double windSpeed)
@@ -112,13 +133,13 @@ namespace WeatherApp.Forms
             g.FillEllipse(bg, cx - r, cy - r, size, size);
             using var border = new Pen(Border, 1.5f);
             g.DrawEllipse(border, cx - r, cy - r, size, size);
-            using var cardFont = new Font("Segoe UI", 7, FontStyle.Bold);
+            using var cardFont = new Font("Segoe UI", 8.5f, FontStyle.Bold);
             using var accentBr = new SolidBrush(Accent);
             using var mutedBr  = new SolidBrush(TextMuted);
-            g.DrawString("N", cardFont, accentBr, cx - 5, cy - r - 14);
-            g.DrawString("S", cardFont, mutedBr, cx - 4, cy + r + 2);
-            g.DrawString("E", cardFont, mutedBr, cx + r + 3, cy - 6);
-            g.DrawString("W", cardFont, mutedBr, cx - r - 14, cy - 6);
+            g.DrawString("N", cardFont, accentBr, cx - 6, cy - r - 16);
+            g.DrawString("S", cardFont, mutedBr, cx - 5, cy + r + 3);
+            g.DrawString("E", cardFont, mutedBr, cx + r + 4, cy - 7);
+            g.DrawString("W", cardFont, mutedBr, cx - r - 16, cy - 7);
             double angle = (windSpeed * 7.0) % 360.0;
             double rad = (angle - 90.0) * Math.PI / 180.0;
             float ax = cx + (float)((r - 8) * Math.Cos(rad));
@@ -138,7 +159,7 @@ namespace WeatherApp.Forms
             int n = days.Count;
 
             using var gridPen = new Pen(Color.FromArgb(30, Accent), 1) { DashStyle = DashStyle.Dash };
-            using var gridFont = new Font("Segoe UI", 6.5f);
+            using var gridFont = new Font("Segoe UI", 7.5f);
             using var mutedBr = new SolidBrush(TextMuted);
 
             for (int i = 0; i <= 4; i++)
@@ -166,8 +187,8 @@ namespace WeatherApp.Forms
             g.DrawCurve(maxPen, maxPts);
             g.DrawCurve(minPen, minPts);
 
-            using var boldSml = new Font("Segoe UI", 7.5f, FontStyle.Bold);
-            using var reg     = new Font("Segoe UI", 7.5f);
+            using var boldSml = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            using var reg     = new Font("Segoe UI", 8.5f);
             using var mainBr  = new SolidBrush(TextMain);
 
             for (int i = 0; i < n; i++)
@@ -176,8 +197,10 @@ namespace WeatherApp.Forms
                 bool sel = _selectedDay == days[i];
                 if (hov || sel)
                 {
-                    using var hl = new Pen(Color.FromArgb(20, Accent), _chartHitZones![i].Width * 0.8f);
-                    g.DrawLine(hl, maxPts[i].X, y, maxPts[i].X, y + height);
+                    var zone = _chartHitZones![i];
+                    using var hl = new SolidBrush(Color.FromArgb(20, Accent));
+                    // Fill the full hover zone so the highlight reaches below the chart line area.
+                    g.FillRectangle(hl, zone.X + zone.Width * 0.1f, zone.Y, zone.Width * 0.8f, zone.Height);
                 }
                 int ds = (hov || sel) ? 12 : 8;
                 int doff = ds / 2;
@@ -187,20 +210,20 @@ namespace WeatherApp.Forms
                 var tf = (hov || sel) ? boldSml : reg;
                 using var maxC = new SolidBrush((hov || sel) ? Color.FromArgb(255, 130, 110) : TextMuted);
                 using var minC = new SolidBrush((hov || sel) ? Accent : Color.FromArgb(140, Accent.R, Accent.G, Accent.B));
-                g.DrawString($"{days[i].TempMax:F0}°", tf, maxC, maxPts[i].X - 10, maxPts[i].Y - 18);
-                g.DrawString($"{days[i].TempMin:F0}°", tf, minC, minPts[i].X - 10, minPts[i].Y + 6);
+                g.DrawString($"{days[i].TempMax:F0}°", tf, maxC, maxPts[i].X - 12, maxPts[i].Y - 20);
+                g.DrawString($"{days[i].TempMin:F0}°", tf, minC, minPts[i].X - 12, minPts[i].Y + 8);
 
                 string abbr = DateTime.Parse(days[i].Date).ToString("ddd");
                 using var dayC = new SolidBrush((hov || sel) ? TextMain : TextMuted);
-                g.DrawString(abbr, (hov || sel) ? boldSml : reg, dayC, maxPts[i].X - 9, y + height + 4);
+                g.DrawString(abbr, (hov || sel) ? boldSml : reg, dayC, maxPts[i].X - 11, y + height + 6);
             }
 
             // Legend
-            using var legFont = new Font("Segoe UI", 7.5f);
-            g.FillEllipse(new SolidBrush(Color.FromArgb(255, 110, 90)), x, y + height + 20, 8, 8);
-            g.DrawString("Max", legFont, mutedBr, x + 12, y + height + 19);
-            g.FillEllipse(new SolidBrush(Accent), x + 55, y + height + 20, 8, 8);
-            g.DrawString("Min", legFont, mutedBr, x + 67, y + height + 19);
+            using var legFont = new Font("Segoe UI", 8.5f);
+            g.FillEllipse(new SolidBrush(Color.FromArgb(255, 110, 90)), x, y + height + 28, 8, 8);
+            g.DrawString("Max", legFont, mutedBr, x + 12, y + height + 26);
+            g.FillEllipse(new SolidBrush(Accent), x + 58, y + height + 28, 8, 8);
+            g.DrawString("Min", legFont, mutedBr, x + 70, y + height + 26);
         }
 
         // ── GLOBE ─────────────────────────────────────────────────────
@@ -217,7 +240,7 @@ namespace WeatherApp.Forms
             g.Clear(Bg);
 
             // Globe ocean
-            float globeR = (float)(Math.Min(W, H) / 2.0 * 0.85);
+            float globeR = (float)(Math.Min(W, H) / 2.0 * 0.85 * _mapZoom);
             using var ocean = new SolidBrush(_darkMode ? Color.FromArgb(30, 20, 50) : Color.FromArgb(210, 228, 255));
             g.FillEllipse(ocean, W / 2f - globeR, H / 2f - globeR, globeR * 2, globeR * 2);
             using var oceanBorder = new Pen(Color.FromArgb(80, Accent), 1f);
@@ -247,8 +270,8 @@ namespace WeatherApp.Forms
                 using var cf = new Font("Segoe UI", 8.5f);
                 using var goldBr = new SolidBrush(AccentGold);
                 using var mutedBr = new SolidBrush(TextMuted);
-                g.DrawString(_currentCity.Name, nf, goldBr, 12, H - 45);
-                g.DrawString($"{_currentCity.Country}  ·  {_currentCity.Latitude:F2}°  ·  {_currentCity.Longitude:F2}°", cf, mutedBr, 12, H - 25);
+                g.DrawString(_currentCity.Name, nf, goldBr, 12, H - 56);
+                g.DrawString($"{_currentCity.Country}  ·  {_currentCity.Latitude:F2}°  ·  {_currentCity.Longitude:F2}°", cf, mutedBr, 12, H - 30);
             }
         }
 
@@ -291,6 +314,11 @@ namespace WeatherApp.Forms
         private void DrawCityMarkers(Graphics g, int W, int H)
         {
             using var cityFont = new Font("Segoe UI", 8.5f);
+            float markerScale = (float)Math.Clamp(0.85 + _mapZoom * 0.35, 0.9, 3.2);
+            int idleSize = (int)Math.Round(8 * markerScale);
+            int idleInner = Math.Max(2, (int)Math.Round(2 * markerScale));
+            float labelOffsetX = 8f + Math.Max(0, (markerScale - 1f) * 2f);
+            float labelOffsetY = 6f + Math.Max(0, (markerScale - 1f) * 1.5f);
             var markers = new Dictionary<string, (double lat, double lon, bool isFav, bool isCapital)>();
 
             foreach (var f in _favorites)  markers[f.Name] = (f.Latitude, f.Longitude, true, false);
@@ -312,23 +340,36 @@ namespace WeatherApp.Forms
                 {
                     int alpha = isActive ? _pulseAlpha : 150;
                     Color glow = isHovered ? Color.White : AccentGold;
+                    int aura = (int)Math.Round(30 * markerScale);
+                    int auraBorder = (int)Math.Round(26 * markerScale);
+                    int core = (int)Math.Round(12 * markerScale);
+                    int auraHalf = aura / 2;
+                    int auraBorderHalf = auraBorder / 2;
+                    int coreHalf = core / 2;
+
                     using var pf = new SolidBrush(Color.FromArgb(alpha, glow));
                     using var pb = new Pen(Color.FromArgb(alpha, glow), 2);
-                    g.FillEllipse(pf, pt.X - 15, pt.Y - 15, 30, 30);
-                    g.DrawEllipse(pb, pt.X - 13, pt.Y - 13, 26, 26);
-                    g.FillEllipse(new SolidBrush(glow), pt.X - 6, pt.Y - 6, 12, 12);
-                    using var bf = new Font("Segoe UI Semibold", 8.5f);
+                    using var glowBr = new SolidBrush(glow);
+                    g.FillEllipse(pf, pt.X - auraHalf, pt.Y - auraHalf, aura, aura);
+                    g.DrawEllipse(pb, pt.X - auraBorderHalf, pt.Y - auraBorderHalf, auraBorder, auraBorder);
+                    g.FillEllipse(glowBr, pt.X - coreHalf, pt.Y - coreHalf, core, core);
+                    float activeNameSize = (float)Math.Clamp(8.5 + (markerScale - 1f) * 1.2, 8.5, 11.5);
+                    using var bf = new Font("Segoe UI Semibold", activeNameSize);
                     using var gb = new SolidBrush(glow);
-                    g.DrawString(name, bf, gb, pt.X + 12, pt.Y - 8);
+                    g.DrawString(name, bf, gb, pt.X + 12 + (markerScale - 1f) * 2f, pt.Y - 8 - (markerScale - 1f));
                 }
                 else
                 {
                     Color dc = isFav ? AccentGold : isCap ? (_darkMode ? Color.FromArgb(180, 200, 230) : Color.FromArgb(80, 110, 150)) : (_darkMode ? Color.FromArgb(85, 130, 210) : Color.FromArgb(50, 90, 180));
-                    g.FillEllipse(new SolidBrush(dc), pt.X - 4, pt.Y - 4, 8, 8);
-                    g.FillEllipse(Brushes.White, pt.X - 1, pt.Y - 1, 2, 2);
-                    Font lf = isCap ? new Font("Segoe UI Semibold", 8.5f) : cityFont;
+                    int idleHalf = idleSize / 2;
+                    int innerHalf = idleInner / 2;
+                    using var dcBr = new SolidBrush(dc);
+                    g.FillEllipse(dcBr, pt.X - idleHalf, pt.Y - idleHalf, idleSize, idleSize);
+                    g.FillEllipse(Brushes.White, pt.X - innerHalf, pt.Y - innerHalf, idleInner, idleInner);
+                    float capSize = (float)Math.Clamp(8.5 + (markerScale - 1f) * 0.8, 8.5, 10.5);
+                    Font lf = isCap ? new Font("Segoe UI Semibold", capSize) : cityFont;
                     using var mb = new SolidBrush(TextMuted);
-                    g.DrawString(name, lf, mb, pt.X + 8, pt.Y - 6);
+                    g.DrawString(name, lf, mb, pt.X + labelOffsetX, pt.Y - labelOffsetY);
                     if (isCap) lf.Dispose();
                 }
             }
@@ -339,17 +380,44 @@ namespace WeatherApp.Forms
         {
             var card = new Panel
             {
-                Size = new Size(162, 235),
+                Size = new Size(220, 480),
                 BackColor = Surface,
                 Cursor = Cursors.Hand,
                 Tag = day
             };
 
-            // Paint the card border/background (NO child labels – all drawn via Paint)
+            var iconBox = new PictureBox
+            {
+                Location = new Point(37, 70),
+                Size = new Size(146, 120),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent
+            };
+            LoadWeatherIcon(iconBox, day.IconCode);
+
+            // Humidity bar background
+            var barBg = new Panel
+            {
+                Location = new Point(14, 330),
+                Size = new Size(192, 7),
+                BackColor = CardBorder
+            };
+            var barFill = new Panel
+            {
+                Location = new Point(0, 0),
+                Size = new Size((int)(192 * day.Humidity / 100.0), 7),
+                BackColor = Accent
+            };
+            barBg.Controls.Add(barFill);
+
+            card.Controls.AddRange(new Control[] { iconBox, barBg });
+
+            // Paint ALL text directly - no label clipping!
             card.Paint += (_, e2) =>
             {
                 var g2 = e2.Graphics;
                 g2.SmoothingMode = SmoothingMode.AntiAlias;
+                g2.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
                 bool sel = _selectedDay == day;
 
                 using var cp = RoundedRect(1, 1, card.Width - 2, card.Height - 2, 12);
@@ -361,108 +429,45 @@ namespace WeatherApp.Forms
                 // TODAY badge
                 if (index == 0)
                 {
-                    using var tp2 = RoundedRect(2, 2, card.Width - 4, 22, 8);
+                    using var tp2 = RoundedRect(2, 2, card.Width - 4, 28, 8);
                     using var tb = new SolidBrush(Accent);
                     g2.FillPath(tb, tp2);
-                    using var tf2 = new Font("Segoe UI Semibold", 7F);
-                    g2.DrawString("TODAY", tf2, Brushes.White, 32, 6);
+                    using var tf2 = new Font("Segoe UI Semibold", 9.5F);
+                    using var todayFmt = new StringFormat
+                    {
+                        Alignment = StringAlignment.Center,
+                        LineAlignment = StringAlignment.Center
+                    };
+                    g2.DrawString("TODAY", tf2, Brushes.White, new RectangleF(2, 2, card.Width - 4, 28), todayFmt);
                 }
-            };
 
-            int yOff = index == 0 ? 28 : 8;
+                // Draw all text with proper alignment and NO clipping
+                int yOff = index == 0 ? 36 : 10;
 
-            // Day label
-            var lblDay = new Label
-            {
-                Text = DateTime.Parse(day.Date).ToString("dddd"),
-                Font = new Font("Segoe UI Semibold", 9F),
-                ForeColor = TextMain,
-                Location = new Point(5, yOff),
-                Size = new Size(152, 20),
-                TextAlign = ContentAlignment.MiddleCenter,
-                BackColor = Color.Transparent
-            };
+                using var dayFont = new Font("Segoe UI Semibold", 12F);
+                using var dayBr = new SolidBrush(TextMain);
+                g2.DrawString(DateTime.Parse(day.Date).ToString("dddd"), dayFont, dayBr, 10, yOff + 2);
 
-            var lblDate = new Label
-            {
-                Text = DateTime.Parse(day.Date).ToString("dd MMM"),
-                Font = new Font("Segoe UI", 7.5f),
-                ForeColor = TextMuted,
-                Location = new Point(5, yOff + 18),
-                Size = new Size(152, 16),
-                TextAlign = ContentAlignment.MiddleCenter,
-                BackColor = Color.Transparent
-            };
+                using var dateFont = new Font("Segoe UI", 10f);
+                using var dateBr = new SolidBrush(TextMuted);
+                g2.DrawString(DateTime.Parse(day.Date).ToString("dd MMM"), dateFont, dateBr, 10, yOff + 32);
 
-            var iconBox = new PictureBox
-            {
-                Location = new Point(31, yOff + 36),
-                Size = new Size(100, 68),
-                SizeMode = PictureBoxSizeMode.Zoom,
-                BackColor = Color.Transparent
-            };
-            LoadWeatherIcon(iconBox, day.IconCode);
+                using var tempFont = new Font("Segoe UI Semibold", 28F);
+                using var tempBr = new SolidBrush(GetTemperatureColor(day.Temperature));
+                g2.DrawString($"{day.Temperature:F0}°C", tempFont, tempBr, 10, yOff + 174);
 
-            var lblTemp = new Label
-            {
-                Text = $"{day.Temperature:F0}°C",
-                Font = new Font("Segoe UI Semibold", 18F),
-                ForeColor = GetTemperatureColor(day.Temperature),
-                Location = new Point(5, yOff + 108),
-                Size = new Size(152, 34),
-                TextAlign = ContentAlignment.MiddleCenter,
-                BackColor = Color.Transparent
-            };
+                using var minmaxFont = new Font("Segoe UI", 10.5f);
+                using var minmaxBr = new SolidBrush(TextMuted);
+                g2.DrawString($"↓{day.TempMin:F0}°  ↑{day.TempMax:F0}°", minmaxFont, minmaxBr, 10, yOff + 250);
 
-            var lblMinMax = new Label
-            {
-                Text = $"↓{day.TempMin:F0}°   ↑{day.TempMax:F0}°",
-                Font = new Font("Segoe UI", 7.5f),
-                ForeColor = TextMuted,
-                Location = new Point(5, yOff + 142),
-                Size = new Size(152, 15),
-                TextAlign = ContentAlignment.MiddleCenter,
-                BackColor = Color.Transparent
-            };
+                using var descFont = new Font("Segoe UI", 10.5f, FontStyle.Italic);
+                using var descBr = new SolidBrush(TextMuted);
+                g2.DrawString(day.Description, descFont, descBr, new RectangleF(10, yOff + 288, 200, 50), StringFormat.GenericDefault);
 
-            var lblDesc = new Label
-            {
-                Text = day.Description,
-                Font = new Font("Segoe UI", 7.5f, FontStyle.Italic),
-                ForeColor = TextMuted,
-                Location = new Point(5, yOff + 158),
-                Size = new Size(152, 14),
-                TextAlign = ContentAlignment.MiddleCenter,
-                BackColor = Color.Transparent
+                using var statsFont = new Font("Segoe UI", 9.5f);
+                using var statsBr = new SolidBrush(TextMuted);
+                g2.DrawString($"💧{day.Humidity}%  ☔{day.PrecipitationProbability}%  💨{day.WindSpeed:F0}", statsFont, statsBr, 10, yOff + 350);
             };
-
-            // Humidity bar background
-            var barBg = new Panel
-            {
-                Location = new Point(14, yOff + 176),
-                Size = new Size(134, 5),
-                BackColor = CardBorder
-            };
-            var barFill = new Panel
-            {
-                Location = new Point(0, 0),
-                Size = new Size((int)(134 * day.Humidity / 100.0), 5),
-                BackColor = Accent
-            };
-            barBg.Controls.Add(barFill);
-
-            var lblStats = new Label
-            {
-                Text = $"💧{day.Humidity}%  ☔{day.PrecipitationProbability}%  💨{day.WindSpeed:F0}",
-                Font = new Font("Segoe UI", 6.8f),
-                ForeColor = TextMuted,
-                Location = new Point(4, yOff + 184),
-                Size = new Size(154, 14),
-                TextAlign = ContentAlignment.MiddleCenter,
-                BackColor = Color.Transparent
-            };
-
-            card.Controls.AddRange(new Control[] { lblDay, lblDate, iconBox, lblTemp, lblMinMax, lblDesc, barBg, lblStats });
 
             Action onClick = () =>
             {
@@ -485,9 +490,58 @@ namespace WeatherApp.Forms
             {
                 byte[] data = await _iconHttpClient.GetByteArrayAsync(WeatherService.GetIconUrl(iconCode));
                 using var ms = new System.IO.MemoryStream(data);
-                if (!box.IsDisposed) box.Image = Image.FromStream(ms);
+                using var rawImage = Image.FromStream(ms);
+                var adjustedImage = AdjustIconForLightCards(rawImage, iconCode);
+
+                if (!box.IsDisposed)
+                {
+                    var oldImage = box.Image;
+                    box.Image = adjustedImage;
+                    oldImage?.Dispose();
+                }
+                else
+                {
+                    adjustedImage.Dispose();
+                }
             }
             catch { }
+        }
+
+        private static Image AdjustIconForLightCards(Image source, string iconCode)
+        {
+            using var src = new Bitmap(source);
+            var dst = new Bitmap(src.Width, src.Height, PixelFormat.Format32bppArgb);
+            bool isSunnyIcon = iconCode.StartsWith("01", StringComparison.OrdinalIgnoreCase);
+
+            for (int y = 0; y < src.Height; y++)
+            {
+                for (int x = 0; x < src.Width; x++)
+                {
+                    Color p = src.GetPixel(x, y);
+                    if (p.A == 0)
+                    {
+                        dst.SetPixel(x, y, p);
+                        continue;
+                    }
+
+                    // Make clear-sky sun icons warm yellow instead of near-black.
+                    if (isSunnyIcon && p.R < 120 && p.G < 120 && p.B < 120)
+                    {
+                        dst.SetPixel(x, y, Color.FromArgb(p.A, 245, 196, 66));
+                    }
+                    // Tone down near-white pixels so cloud bodies stay visible on white cards.
+                    else if (p.R > 220 && p.G > 220 && p.B > 220)
+                    {
+                        dst.SetPixel(x, y, Color.FromArgb(p.A, 212, 216, 224));
+                    }
+                    else
+                    {
+                        dst.SetPixel(x, y, p);
+                    }
+                }
+            }
+
+            return dst;
         }
     }
 }

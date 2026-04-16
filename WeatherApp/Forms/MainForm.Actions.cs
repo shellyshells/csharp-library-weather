@@ -62,15 +62,15 @@ namespace WeatherApp.Forms
             _cardsPanel.Controls.Clear();
             _cardsPanel.AutoScroll = true;
 
-            const int cardWidth = 162, cardGap = 10;
+            const int cardWidth = 220, cardGap = 18;
             int totalWidth = forecasts.Count * (cardWidth + cardGap);
             // Set a fixed layout so cards don't overflow/overlap
-            _cardsPanel.AutoScrollMinSize = new System.Drawing.Size(totalWidth, 240);
+            _cardsPanel.AutoScrollMinSize = new System.Drawing.Size(totalWidth, 500);
 
             for (int i = 0; i < forecasts.Count; i++)
             {
                 var card = CreateForecastCard(forecasts[i], i);
-                int targetX = 8 + i * (cardWidth + cardGap);
+                int targetX = 10 + i * (cardWidth + cardGap);
                 card.Location = new Point(targetX, 5);
                 _cardsPanel.Controls.Add(card);
             }

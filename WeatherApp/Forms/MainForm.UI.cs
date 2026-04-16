@@ -42,8 +42,8 @@ namespace WeatherApp.Forms
 
             var sidebarSep = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = Color.FromArgb(65, 55, 100) };
 
-            _navSearch    = MakeNavBtn("🔍   Search / Forecast");
-            _navFavorites = MakeNavBtn("⭐   Favourites");
+            _navSearch    = MakeNavBtn("🔍   Search");
+            _navFavorites = MakeNavBtn(" ✦  Favourites");
             _navGlobe     = MakeNavBtn("🌐   Globe");
             _navSettings  = MakeNavBtn("⚙️   Settings");
             _navButtons.AddRange(new[] { _navSearch, _navFavorites, _navGlobe, _navSettings });
@@ -113,73 +113,90 @@ namespace WeatherApp.Forms
             var header = MakePageHeader("Search / Forecast");
 
             // ── Search bar card ───────────────────────────────────────
-            var searchCard = new Panel
+            _searchCard = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 68,
+                Height = 78,
                 BackColor = Surface,
-                Padding = new Padding(10, 10, 10, 10)
+                Padding = new Padding(10, 12, 10, 12)
             };
-            searchCard.Paint += CardBorderPaint;
+            _searchCard.Paint += CardBorderPaint;
 
             _txtCitySearch = new TextBox
             {
                 PlaceholderText = "City name (e.g. Marseille, FR)...",
-                Font = new Font("Segoe UI", 10F),
+                Font = new Font("Segoe UI", 11F),
                 BorderStyle = BorderStyle.FixedSingle,
-                Height = 30,
+                Height = 34,
                 Left = 10,
-                Top = 14,
-                Width = 340
+                Top = 15,
+                Width = 360
             };
 
-            _btnSearch = MakeAccentButton("🔍  Search", 360, 14, 130, 30);
+            _btnSearch = MakeAccentButton("🔍  Search", 380, 15, 140, 34);
             _btnAddFavorite = new Button
             {
                 Text = "☆ Favourite",
-                Left = 500, Top = 14, Width = 130, Height = 30,
+                Left = 530, Top = 15, Width = 140, Height = 34,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Surface, ForeColor = AccentGold,
-                Font = new Font("Segoe UI Semibold", 9F),
+                BackColor = Color.FromArgb(255, 250, 236), ForeColor = Color.FromArgb(161, 114, 22),
+                Font = new Font("Segoe UI Semibold", 9.5F),
                 Enabled = false, Cursor = Cursors.Hand
             };
-            _btnAddFavorite.FlatAppearance.BorderColor = Border;
+            _btnAddFavorite.FlatAppearance.BorderColor = AccentGold;
+            _btnAddFavorite.FlatAppearance.BorderSize = 2;
+            _btnAddFavorite.FlatAppearance.MouseOverBackColor = Color.FromArgb(255, 244, 214);
+            _btnAddFavorite.FlatAppearance.MouseDownBackColor = Color.FromArgb(255, 236, 194);
 
             _txtCitySearch.KeyDown += (_, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; ExecuteSearch(); } };
             _btnSearch.Click += (_, _) => ExecuteSearch();
             _btnAddFavorite.Click += FavoriteButton_Click;
 
-            searchCard.Controls.AddRange(new Control[] { _txtCitySearch, _btnSearch, _btnAddFavorite });
-            searchCard.Resize += (_, _) =>
+            void SyncSearchRowHeights()
             {
-                int avail = searchCard.ClientSize.Width - 20;
-                _txtCitySearch!.Width = Math.Max(150, avail - 280);
+                int h = _txtCitySearch!.Height;
+                _btnSearch!.Height = h;
+                _btnAddFavorite!.Height = h;
+                _btnSearch.Top = _txtCitySearch.Top;
+                _btnAddFavorite.Top = _txtCitySearch.Top;
+            }
+
+            _searchCard.Controls.AddRange(new Control[] { _txtCitySearch, _btnSearch, _btnAddFavorite });
+            SyncSearchRowHeights();
+            _searchCard.Resize += (_, _) =>
+            {
+                int avail = _searchCard.ClientSize.Width - 20;
+                _txtCitySearch!.Width = Math.Max(170, avail - 310);
                 _btnSearch!.Left = _txtCitySearch.Right + 10;
                 _btnAddFavorite!.Left = _btnSearch.Right + 10;
+                SyncSearchRowHeights();
             };
 
             // ── City info labels ──────────────────────────────────────
-            var infoBar = new Panel { Dock = DockStyle.Top, Height = 46, BackColor = Color.Transparent, Padding = new Padding(0, 6, 0, 0) };
+            var infoBar = new Panel { Dock = DockStyle.Top, Height = 136, BackColor = Color.Transparent, Padding = new Padding(0, 10, 0, 8) };
             _lblCityName = new Label
             {
                 Text = "Enter a city name above to get the forecast",
-                Font = new Font("Segoe UI Semibold", 13F),
+                Font = new Font("Segoe UI Semibold", 16F),
                 ForeColor = TextMain,
                 AutoSize = false,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = Color.Transparent
+                Dock = DockStyle.Top,
+                Height = 80,
+                TextAlign = ContentAlignment.TopLeft,
+                BackColor = Color.Transparent,
+                Padding = new Padding(0, 8, 0, 16)
             };
             _lblCoords = new Label
             {
                 Text = "",
-                Font = new Font("Segoe UI", 8.5F),
+                Font = new Font("Segoe UI", 10.5F),
                 ForeColor = TextMuted,
                 AutoSize = false,
                 Dock = DockStyle.Bottom,
-                Height = 18,
+                Height = 40,
                 TextAlign = ContentAlignment.BottomLeft,
-                BackColor = Color.Transparent
+                BackColor = Color.Transparent,
+                Padding = new Padding(0, 3, 0, 3)
             };
             infoBar.Controls.Add(_lblCityName);
             infoBar.Controls.Add(_lblCoords);
@@ -188,7 +205,7 @@ namespace WeatherApp.Forms
             _spinnerPanel = new Panel
             {
                 Dock = DockStyle.None,
-                Size = new Size(860, 250),
+                Size = new Size(980, 290),
                 Location = new Point(0, 0),
                 BackColor = Color.Transparent,
                 Visible = false
@@ -199,7 +216,7 @@ namespace WeatherApp.Forms
             var cardsWrapper = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 255,
+                Height = 510,
                 BackColor = Color.Transparent,
                 Padding = new Padding(0, 8, 0, 0)
             };
@@ -227,7 +244,7 @@ namespace WeatherApp.Forms
             _pnlSearch.Controls.Add(_detailPanel);
             _pnlSearch.Controls.Add(cardsWrapper);
             _pnlSearch.Controls.Add(infoBar);
-            _pnlSearch.Controls.Add(searchCard);
+            _pnlSearch.Controls.Add(_searchCard);
             _pnlSearch.Controls.Add(header);
         }
 
@@ -237,18 +254,19 @@ namespace WeatherApp.Forms
             _pnlFavorites = new Panel { BackColor = Bg };
             var header = MakePageHeader("Favourites");
 
-            var card = new Panel { Dock = DockStyle.Fill, BackColor = Surface, Padding = new Padding(12) };
-            card.Paint += CardBorderPaint;
+            _favoritesCard = new Panel { Dock = DockStyle.Fill, BackColor = Surface, Padding = new Padding(12) };
+            _favoritesCard.Paint += CardBorderPaint;
 
-            var toolBar = new Panel { Dock = DockStyle.Top, Height = 48, BackColor = Color.Transparent, Padding = new Padding(0, 8, 0, 0) };
-            var btnLoad = MakeAccentButton("Load Weather", 0, 0, 140, 32);
-            var btnRemove = new Button
+            _favoritesToolbar = new Panel { Dock = DockStyle.Top, Height = 62, BackColor = Color.Transparent, Padding = new Padding(0, 10, 0, 0) };
+            _btnLoadFavorite = MakeAccentButton("Load Weather", 0, 2, 150, 40);
+            _btnRemoveFavorite = new Button
             {
-                Text = "Remove", Left = 150, Top = 0, Width = 110, Height = 32,
+                Text = "Remove", Left = 160, Top = 2, Width = 136, Height = 40,
                 FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(220, 53, 69),
-                ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 9F), Cursor = Cursors.Hand
+                ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 10F), Cursor = Cursors.Hand,
+                TextAlign = ContentAlignment.MiddleCenter
             };
-            btnRemove.FlatAppearance.BorderSize = 0;
+            _btnRemoveFavorite.FlatAppearance.BorderSize = 0;
 
             _lstFavorites = new ListBox
             {
@@ -260,7 +278,7 @@ namespace WeatherApp.Forms
                 ItemHeight = 30
             };
 
-            btnLoad.Click += (_, _) =>
+            _btnLoadFavorite.Click += (_, _) =>
             {
                 if (_lstFavorites.SelectedItem is FavoriteCity fav)
                 {
@@ -269,7 +287,7 @@ namespace WeatherApp.Forms
                     ExecuteSearch();
                 }
             };
-            btnRemove.Click += (_, _) =>
+            _btnRemoveFavorite.Click += (_, _) =>
             {
                 if (_lstFavorites.SelectedItem is FavoriteCity fav)
                 {
@@ -280,10 +298,10 @@ namespace WeatherApp.Forms
                 }
             };
 
-            toolBar.Controls.AddRange(new Control[] { btnLoad, btnRemove });
-            card.Controls.Add(_lstFavorites);
-            card.Controls.Add(toolBar);
-            _pnlFavorites.Controls.Add(card);
+            _favoritesToolbar.Controls.AddRange(new Control[] { _btnLoadFavorite, _btnRemoveFavorite });
+            _favoritesCard.Controls.Add(_lstFavorites);
+            _favoritesCard.Controls.Add(_favoritesToolbar);
+            _pnlFavorites.Controls.Add(_favoritesCard);
             _pnlFavorites.Controls.Add(header);
         }
 
@@ -318,10 +336,10 @@ namespace WeatherApp.Forms
             var header = MakePageHeader("Settings");
 
             var body = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16), AutoScroll = true };
-            var card = new Panel { Dock = DockStyle.Top, Height = 200, BackColor = Surface, Padding = new Padding(16) };
-            card.Paint += CardBorderPaint;
+            _settingsCard = new Panel { Dock = DockStyle.Top, Height = 232, BackColor = Surface, Padding = new Padding(16) };
+            _settingsCard.Paint += CardBorderPaint;
 
-            var title = new Label
+            _settingsTitle = new Label
             {
                 Text = "Appearance",
                 Dock = DockStyle.Top, Height = 36,
@@ -346,20 +364,21 @@ namespace WeatherApp.Forms
                 ApplyTheme();
             };
 
-            var apiNote = new Label
+            _settingsApiNote = new Label
             {
                 Text = "API Key: Set API_KEY in the .env file next to the executable.\nGet a free key at: openweathermap.org/api",
-                Dock = DockStyle.Top, Height = 56,
+                Dock = DockStyle.Top, Height = 84,
                 Font = new Font("Segoe UI", 9.5F),
                 ForeColor = TextMuted,
                 BackColor = Color.Transparent,
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.TopLeft,
+                Padding = new Padding(0, 2, 0, 4)
             };
 
-            card.Controls.Add(apiNote);
-            card.Controls.Add(_chkDarkMode);
-            card.Controls.Add(title);
-            body.Controls.Add(card);
+            _settingsCard.Controls.Add(_settingsApiNote);
+            _settingsCard.Controls.Add(_chkDarkMode);
+            _settingsCard.Controls.Add(_settingsTitle);
+            body.Controls.Add(_settingsCard);
             _pnlSettings.Controls.Add(body);
             _pnlSettings.Controls.Add(header);
         }
@@ -372,8 +391,8 @@ namespace WeatherApp.Forms
                 Text = text, Dock = DockStyle.Top, Height = 42,
                 FlatStyle = FlatStyle.Flat,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(20, 0, 0, 0),
-                Font = new Font("Segoe UI", 10F),
+                Padding = new Padding(18, 0, 0, 0),
+                Font = new Font("Segoe UI Semibold", 10F),
                 ForeColor = Color.FromArgb(170, 170, 200),
                 BackColor = Sidebar, Cursor = Cursors.Hand
             };
@@ -382,13 +401,14 @@ namespace WeatherApp.Forms
             return b;
         }
 
-        private static Label MakePageHeader(string text) => new Label
+        private Label MakePageHeader(string text) => new Label
         {
             Text = text, Dock = DockStyle.Top, Height = 58,
             Font = new Font("Segoe UI Semibold", 15F),
-            ForeColor = Color.FromArgb(33, 37, 41),
+            ForeColor = TextMain,
             TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(2, 0, 0, 0)
+            Padding = new Padding(2, 0, 0, 0),
+            Tag = "page-header"
         };
 
         private Button MakeAccentButton(string text, int x, int y, int w, int h)
@@ -419,11 +439,11 @@ namespace WeatherApp.Forms
             foreach (var b in _navButtons)
             {
                 b.BackColor = Sidebar;
-                b.Font = new Font("Segoe UI", 10F);
+                b.Font = new Font("Segoe UI Semibold", 10F);
                 b.ForeColor = Color.FromArgb(170, 170, 200);
             }
             nav.BackColor = SideActive;
-            nav.Font = new Font("Segoe UI", 10F);
+            nav.Font = new Font("Segoe UI Semibold", 10F);
             nav.ForeColor = Color.White;
         }
 
@@ -431,9 +451,51 @@ namespace WeatherApp.Forms
         {
             BackColor = Bg;
             foreach (var p in _contentPanels) p.BackColor = Bg;
-            _lstFavorites?.Invoke((Action)(() => { _lstFavorites.BackColor = Surface; _lstFavorites.ForeColor = TextMain; }));
-            _lblCityName?.Invoke((Action)(() => _lblCityName.ForeColor = TextMain));
-            _lblCoords?.Invoke((Action)(() => _lblCoords.ForeColor = TextMuted));
+            if (_searchCard != null) _searchCard.BackColor = Surface;
+            if (_txtCitySearch != null)
+            {
+                _txtCitySearch.BackColor = Surface;
+                _txtCitySearch.ForeColor = TextMain;
+            }
+            if (_btnSearch != null)
+            {
+                _btnSearch.BackColor = Accent;
+                _btnSearch.ForeColor = Color.White;
+            }
+            if (_btnAddFavorite != null)
+            {
+                _btnAddFavorite.BackColor = _darkMode ? Color.FromArgb(58, 49, 27) : Color.FromArgb(255, 250, 236);
+                _btnAddFavorite.ForeColor = _darkMode ? AccentGold : Color.FromArgb(161, 114, 22);
+                _btnAddFavorite.FlatAppearance.BorderColor = AccentGold;
+            }
+            if (_favoritesCard != null) _favoritesCard.BackColor = Surface;
+            if (_favoritesToolbar != null) _favoritesToolbar.BackColor = Color.Transparent;
+            if (_btnLoadFavorite != null)
+            {
+                _btnLoadFavorite.BackColor = Accent;
+                _btnLoadFavorite.ForeColor = Color.White;
+            }
+            if (_btnRemoveFavorite != null)
+            {
+                _btnRemoveFavorite.BackColor = Color.FromArgb(220, 53, 69);
+                _btnRemoveFavorite.ForeColor = Color.White;
+            }
+            if (_lstFavorites != null)
+            {
+                _lstFavorites.BackColor = Surface;
+                _lstFavorites.ForeColor = TextMain;
+            }
+            if (_settingsCard != null) _settingsCard.BackColor = Surface;
+            if (_settingsTitle != null) _settingsTitle.ForeColor = TextMain;
+            if (_settingsApiNote != null) _settingsApiNote.ForeColor = TextMuted;
+            if (_chkDarkMode != null) _chkDarkMode.ForeColor = TextMain;
+            if (_lblCityName != null) _lblCityName.ForeColor = TextMain;
+            if (_lblCoords != null) _lblCoords.ForeColor = TextMuted;
+            foreach (var p in _contentPanels)
+            {
+                foreach (Control c in p.Controls)
+                    if (c is Label l && Equals(l.Tag, "page-header")) l.ForeColor = TextMain;
+            }
             if (_currentForecasts != null) DisplayCardsWithAnimation(_currentForecasts);
             _mapPanel?.Invalidate();
             _detailPanel?.Invalidate();
@@ -484,8 +546,10 @@ namespace WeatherApp.Forms
             int W = _mapPanel!.Width, H = _mapPanel.Height;
             var markers = BuildVisibleMarkers(W, H);
             string? hov = null;
+            double hoverRadius = Math.Clamp(7.0 + _mapZoom * 2.0, 12.0, 28.0);
+            double hoverRadiusSq = hoverRadius * hoverRadius;
             foreach (var (n, pt) in markers)
-                if (Math.Pow(e.X - pt.X, 2) + Math.Pow(e.Y - pt.Y, 2) <= 144) { hov = n; break; }
+                if (Math.Pow(e.X - pt.X, 2) + Math.Pow(e.Y - pt.Y, 2) <= hoverRadiusSq) { hov = n; break; }
             if (_hoveredCityName != hov)
             {
                 _hoveredCityName = hov;
