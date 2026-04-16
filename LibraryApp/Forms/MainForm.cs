@@ -105,12 +105,12 @@ public sealed class MainForm : Form
         dgvBooks=MkGrid();
         dgvBooks.Columns.AddRange(MkCol("Id","ID",60,false),MkCol("Title","Title",210),MkCol("Author","Author",170),MkCol("ISBN","ISBN",120),MkCol("Genre","Genre",110),MkCol("AvailabilityLabel","Status",95));
 
-        var actionBar=new Panel{Dock=DockStyle.Top,Height=52,Padding=new Padding(0,8,0,4)};
+        var actionBar=new Panel{Dock=DockStyle.Top,Height=64,Padding=new Padding(0,10,0,8)};
         var flow=new FlowLayoutPanel{Dock=DockStyle.Left,AutoSize=true,WrapContents=false,FlowDirection=FlowDirection.LeftToRight};
-        var bAdd=ActBtn("+ Add",ThemeManager.Accent,Color.White,"accent");bAdd.Width=100;bAdd.Height=36;bAdd.Margin=new Padding(0,0,8,0);bAdd.Font=new Font("Segoe UI Semibold",9.5F);
-        var bEdit=ActBtn("Edit",ThemeManager.Surface,ThemeManager.Text);bEdit.Width=80;bEdit.Height=36;bEdit.Margin=new Padding(0,0,8,0);bEdit.Font=new Font("Segoe UI Semibold",9.5F);
-        var bDel=ActBtn("Delete",ThemeManager.Danger,Color.White,"danger");bDel.Width=80;bDel.Height=36;bDel.Margin=new Padding(0,0,8,0);bDel.Font=new Font("Segoe UI Semibold",9.5F);
-        var bExp=ActBtn("Export CSV",ThemeManager.Surface,ThemeManager.Text);bExp.Width=110;bExp.Height=36;bExp.Font=new Font("Segoe UI Semibold",9.5F);
+        var bAdd=ActBtn("+ Add",ThemeManager.Accent,Color.White,"accent");bAdd.Width=100;bAdd.Height=42;bAdd.Margin=new Padding(0,0,8,0);bAdd.Font=new Font("Segoe UI Semibold",9.5F);
+        var bEdit=ActBtn("Edit",ThemeManager.Surface,ThemeManager.Text);bEdit.Width=80;bEdit.Height=42;bEdit.Margin=new Padding(0,0,8,0);bEdit.Font=new Font("Segoe UI Semibold",9.5F);
+        var bDel=ActBtn("Delete",ThemeManager.Danger,Color.White,"danger");bDel.Width=108;bDel.Height=42;bDel.Margin=new Padding(0,0,8,0);bDel.Font=new Font("Segoe UI Semibold",9.5F);
+        var bExp=ActBtn("Export CSV",ThemeManager.Surface,ThemeManager.Text);bExp.Width=110;bExp.Height=42;bExp.Font=new Font("Segoe UI Semibold",9.5F);
         bAdd.Click+=BtnAdd_Click;bEdit.Click+=BtnEdit_Click;bDel.Click+=BtnDelete_Click;bExp.Click+=BtnExport_Click;
         flow.Controls.AddRange(new Control[]{bAdd,bEdit,bDel,bExp});actionBar.Controls.Add(flow);
 
@@ -241,7 +241,68 @@ public sealed class MainForm : Form
     private void BtnAdd_Click(object? s,EventArgs e){using var f=new AddEditBookForm();if(f.ShowDialog(this)==DialogResult.OK&&f.Result!=null){try{_db.AddBook(f.Result);RefreshBooks();}catch(Exception ex){DbErr(ex);}}}
     private void BtnEdit_Click(object? s,EventArgs e){var b=Sel();if(b==null)return;using var f=new AddEditBookForm(b);if(f.ShowDialog(this)==DialogResult.OK&&f.Result!=null){try{_db.UpdateBook(f.Result);RefreshBooks();}catch(Exception ex){DbErr(ex);}}}
     private void BtnDelete_Click(object? s,EventArgs e){var b=Sel();if(b==null)return;if(MessageBox.Show($"Delete \"{b.Title}\" by {b.Author}?","Confirm",MessageBoxButtons.YesNo,MessageBoxIcon.Warning)==DialogResult.Yes){try{_db.DeleteBook(b.Id);RefreshBooks();}catch(Exception ex){DbErr(ex);}}}
-    private void BtnExport_Click(object? s,EventArgs e){using var d=new SaveFileDialog{Filter="CSV|*.csv",FileName=$"library_{DateTime.Now:yyyyMMdd}.csv"};if(d.ShowDialog(this)==DialogResult.OK){File.WriteAllText(d.FileName,DatabaseHelper.ToCsv(_currentBooks));SetStatus($"Exported {_currentBooks.Count} books.");}}
+    private async void BtnExport_Click(object? s,EventArgs e)
+    {
+        try
+        {
+            if(_currentBooks==null||_currentBooks.Count==0)
+            {
+                MessageBox.Show("There are no books to export.","Export CSV",MessageBoxButtons.OK,MessageBoxIcon.Information);
+                return;
+            }
+
+            using var d=new SaveFileDialog
+            {
+                Filter="CSV|*.csv",
+                FileName=$"library_{DateTime.Now:yyyyMMdd}.csv",
+                AddExtension=true,
+                DefaultExt="csv",
+                OverwritePrompt=true,
+                CheckPathExists=true
+            };
+
+            if(d.ShowDialog(this)!=DialogResult.OK) return;
+
+            // Snapshot current data so export is stable even if grid refreshes.
+            var booksSnapshot=_currentBooks.Select(b=>new Book
+            {
+                Id=b.Id,
+                Title=b.Title,
+                Author=b.Author,
+                ISBN=b.ISBN,
+                PublicationYear=b.PublicationYear,
+                Genre=b.Genre,
+                Shelf=b.Shelf,
+                Row=b.Row,
+                IsAvailable=b.IsAvailable,
+                CoverUrl=b.CoverUrl,
+                Description=b.Description,
+                CreatedAt=b.CreatedAt
+            }).ToList();
+
+            string targetFile=d.FileName;
+            SetStatus("Exporting CSV...");
+            UseWaitCursor=true;
+
+            await Task.Run(() =>
+            {
+                string csv=DatabaseHelper.ToCsv(booksSnapshot);
+                File.WriteAllText(targetFile,csv);
+            });
+
+            SetStatus($"Exported {booksSnapshot.Count} books to {Path.GetFileName(targetFile)}.");
+            MessageBox.Show("Export completed successfully.","Export CSV",MessageBoxButtons.OK,MessageBoxIcon.Information);
+        }
+        catch(Exception ex)
+        {
+            MessageBox.Show($"Export failed:\n{ex.Message}","Export CSV",MessageBoxButtons.OK,MessageBoxIcon.Error);
+            SetStatus("Export failed.");
+        }
+        finally
+        {
+            UseWaitCursor=false;
+        }
+    }
 
     private void BtnBorrowBook_Click(object? s,EventArgs e)
     {
